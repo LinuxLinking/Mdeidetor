@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Phase 6 启动屏配色:对齐 Flutter 端 ColorScheme.fromSeed(Colors.teal)。
+     色值 = Colors.teal(0xFF009688),与 Flutter 端 ColorScheme seed 一致。 -->
+<resources>
+    <color name="launch_bg">#009688</color>
+</resources>

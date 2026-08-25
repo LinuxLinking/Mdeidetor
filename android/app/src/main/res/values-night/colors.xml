@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Phase 6 启动屏深色配色:teal 800(0xFF00695C),对齐 Flutter 深色主题。 -->
+<resources>
+    <color name="launch_bg">#00695C</color>
+</resources>

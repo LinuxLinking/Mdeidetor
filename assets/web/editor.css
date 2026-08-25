@@ -1,0 +1,164 @@
+* {
+  box-sizing: border-box;
+}
+
+html.theme-transitioning,
+html.theme-transitioning body,
+html.theme-transitioning #app,
+html.theme-transitioning .ProseMirror,
+html.theme-transitioning .native-mermaid,
+html.theme-transitioning .native-code-block {
+  transition: background-color 500ms ease, color 500ms ease, border-color 500ms ease,
+    font-size 500ms ease, margin 500ms ease;
+}
+
+:root {
+  color-scheme: light dark;
+  --editor-bg: #fbfdfc;
+  --editor-fg: #17201d;
+  --editor-muted: #5f6f69;
+  --editor-selection: rgba(0, 121, 107, 0.18);
+  --editor-code-bg: #f0f4f2;
+  --editor-accent: #00897b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --editor-bg: #111816;
+    --editor-fg: #e3ebe7;
+    --editor-muted: #aab8b2;
+    --editor-selection: rgba(128, 203, 196, 0.24);
+  }
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--editor-fg);
+  background: var(--editor-bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+}
+
+::selection {
+  background: var(--editor-selection);
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+textarea {
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  outline: 0;
+  resize: none;
+  padding: 18px;
+  background: transparent;
+  color: inherit;
+  caret-color: var(--editor-accent);
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+textarea::placeholder {
+  color: var(--editor-muted);
+}
+
+.native-code-block {
+  position: relative;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--editor-code-bg);
+  padding-top: 38px;
+}
+
+.native-code-toolbar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  color: var(--editor-muted);
+  font: 12px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.native-code-toolbar button {
+  border: 1px solid color-mix(in srgb, var(--editor-muted) 35%, transparent);
+  border-radius: 5px;
+  padding: 5px 9px;
+  color: var(--editor-fg);
+  cursor: pointer;
+}
+
+.native-mermaid {
+  overflow-x: auto;
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--editor-accent) 30%, transparent);
+  border-radius: 8px;
+  background: var(--editor-code-bg);
+}
+
+.native-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.ProseMirror h1 { font-size: var(--h1-size, 2em); color: var(--h1-color, inherit); margin-block: var(--h1-space, 24px) 12px; }
+.ProseMirror h2 { font-size: var(--h2-size, 1.5em); color: var(--h2-color, inherit); margin-block: var(--h2-space, 20px) 10px; }
+.ProseMirror h3 { font-size: var(--h3-size, 1.25em); color: var(--h3-color, inherit); margin-block: var(--h3-space, 18px) 8px; }
+.ProseMirror h4 { font-size: var(--h4-size, 1em); color: var(--h4-color, inherit); margin-block: var(--h4-space, 16px) 8px; }
+.ProseMirror h5 { font-size: var(--h5-size, .875em); color: var(--h5-color, inherit); margin-block: var(--h5-space, 14px) 6px; }
+.ProseMirror h6 { font-size: var(--h6-size, .85em); color: var(--h6-color, inherit); margin-block: var(--h6-space, 12px) 6px; }
+
+.ProseMirror blockquote blockquote,
+.ProseMirror li > ul,
+.ProseMirror li > ol {
+  border-left: 1px solid color-mix(in srgb, var(--editor-accent) 35%, transparent);
+  margin-left: 4px;
+  padding-left: 16px;
+}
+
+.media-card {
+  margin: 16px 0;
+  border: 1px solid color-mix(in srgb, var(--editor-muted) 30%, transparent);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.media-card video,
+.media-card audio {
+  width: 100%;
+}
+
+.native-image {
+  display: flex;
+  margin: 16px 0;
+}
+
+.native-image.align-left { justify-content: flex-start; }
+.native-image.align-center { justify-content: center; }
+.native-image.align-right { justify-content: flex-end; }
+
+.native-image img {
+  width: min(var(--image-width, 100%), 100%);
+  height: auto;
+}
+
+.nested-quote,
+.native-list .native-list {
+  border-left: 1px solid var(--editor-muted);
+  padding-left: 16px;
+}

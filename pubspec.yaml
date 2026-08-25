@@ -1,0 +1,80 @@
+name: mdeditor
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 编辑器容器(Phase 1 起步阶段先用纯文本占位,等 milkdown_src 就绪后切换 WebView+Milkdown)
+  webview_flutter: ^4.10.0          # 官方 WebView,Android 9~16 稳定
+
+  # 文件 I/O
+  # file_picker 不再用 —— Android 上它会缓存副本,丢失原 content:// URI,
+  # 改用自研 SafChannel(见 lib/file_io/saf_channel.dart)
+  # 状态与持久化
+  provider: ^6.1.2                  # 状态管理(轻量,易学)
+  shared_preferences: ^2.3.0        # 设置项 + 最近文件索引持久化
+
+  # Phase 6 国际化(中/英)
+  flutter_localizations:
+    sdk: flutter
+  intl: any                          # 仅用 Localizations API + Date 格式化,不强约束版本
+
+  # DOCX 导出(Phase 4)
+  archive: ^3.6.1                   # ZIP 打包 .docx(OOXML 容器)
+  markdown: ^7.2.2                  # md 解析为 AST(ExtensionSet.gitHubFlavored)
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # Material Icons 字体
+  uses-material-design: true
+
+  # Milkdown WebView 静态资源:
+  #   index.html - WebView 入口
+  #   editor.js  - Vite 打包产物(milkdown_src/ 产出,占位版暂用 textarea fallback)
+  #   editor.css - 基础样式
+  assets:
+    - assets/web/index.html
+    - assets/web/editor.js
+    - assets/web/editor.css
+    - assets/web/style.css
+    - assets/web/native_features.js
+    - assets/web/vendor/highlightjs/all.min.js
+    - assets/web/vendor/mermaid/mermaid.min.js
+    - assets/web/vendor/katex/katex.min.js
+    - assets/web/vendor/katex/katex.min.css

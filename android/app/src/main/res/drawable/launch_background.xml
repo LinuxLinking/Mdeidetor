@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 启动屏背景:Phase 6 改为 teal 配色(ColorScheme.fromSeed seedColor)。
+     深色模式由 values-night/styles.xml + drawable-v21/launch_background.xml
+     走 ?android:colorBackground 自动适配。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_bg" />
+
+    <!-- 应用图标占位(后续替换为正式 logo) -->
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@mipmap/ic_launcher" />
+    </item>
+</layer-list>
