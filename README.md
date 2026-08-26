@@ -1,5 +1,7 @@
 # Mdeditor
 
+[English](README.en.md) | [日本語](README.ja.md) | [Francais](README.fr.md)
+
 Mdeditor 是一个面向 Android 的 Markdown 编辑器，基于 Flutter + WebView + Milkdown 构建。它支持直接编辑 `.md` 文件、最近文件管理、主题切换，以及导出 PDF / DOCX / HTML。
 
 ## 主要功能
@@ -74,4 +76,8 @@ npm run build
 
 **新增模块**
 - `android/render-core`：原生 Markdown 渲染模块（增量渲染、LaTeX/Math 预处理、光标偏移映射等 Kotlin 实现）
+
+## 许可证
+
+本项目基于 [GNU General Public License v3.0](LICENSE) 开源。
 

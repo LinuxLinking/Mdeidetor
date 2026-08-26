@@ -63,3 +63,6 @@ node_modules/
 # Markdown files (except README)
 *.md
 !README.md
+!README.en.md
+!README.ja.md
+!README.fr.md
