@@ -53,6 +53,7 @@ body {
   height: 100vh;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  padding: 0 18px 100px 18px;
 }
 
 textarea {

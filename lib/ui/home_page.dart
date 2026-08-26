@@ -30,8 +30,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _refresh() async {
     if (!mounted) return;
-    setState(() => _future = _loadRecentFiles());
-    await _future;
+    final future = _loadRecentFiles();
+    setState(() => _future = future);
+    await future;
   }
 
   Future<void> _openViaSAF() async {

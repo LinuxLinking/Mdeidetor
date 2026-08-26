@@ -56,6 +56,7 @@ class EditorController extends ChangeNotifier {
   int _renderGeneration = 0;
   Timer? _renderDebounce;
   bool _renderInFlight = false;
+  bool _disposed = false;
   String? _pendingNativeMarkdown;
 
   bool get isReady => _isReady;
@@ -75,7 +76,10 @@ class EditorController extends ChangeNotifier {
           debugPrint('EditorController: WebView error: ${error.description} (${error.errorType})');
         },
       ))
-      ..addJavaScriptChannel('MdBridge', onMessageReceived: _onBridgeMessage);
+      ..addJavaScriptChannel('MdBridge', onMessageReceived: _onBridgeMessage)
+      ..setOnConsoleMessage((message) {
+        debugPrint('EditorController: JS console [${message.level}]: ${message.message}');
+      });
   }
 
   /// 初始内容（在 WebView 加载完成、init() 调用前由 EditorPage 设置）。
@@ -138,6 +142,7 @@ class EditorController extends ChangeNotifier {
           debugPrint('EditorController: Milkdown ready!');
           _isReady = true;
           notifyListeners();
+          _diagnoseEditorDom();
           final initial = pendingInitialContent;
           if (initial != null) {
             // The file may finish reading after onPageFinished. Re-apply it
@@ -196,59 +201,126 @@ class EditorController extends ChangeNotifier {
     }
   }
 
+  /// 诊断 WebView 中 Milkdown 编辑器的 DOM 状态。
+  void _diagnoseEditorDom() async {
+    try {
+      final result = await _wvc?.runJavaScriptReturningResult(
+        '(function(){'
+        'var app=document.getElementById("app");'
+        'var pm=app&&app.querySelector(".ProseMirror");'
+        'var nord=app&&app.querySelector(".milkdown-theme-nord");'
+        'var h1=app&&app.querySelector("h1");'
+        'var cs=h1?getComputedStyle(h1):null;'
+        'var child0=app&&app.children[0];'
+        'return JSON.stringify({'
+        'hasApp:!!app,'
+        'appChildren:app?app.children.length:0,'
+        'appClass:app?app.className:"",'
+        'appHTML:app?app.innerHTML.substring(0,500):"",'
+        'child0Tag:child0?child0.tagName:"",'
+        'child0Class:child0?child0.className:"",'
+        'child0ContentEditable:child0?String(child0.contentEditable):"",'
+        'hasProseMirror:!!pm,'
+        'pmTag:pm?pm.tagName:"",'
+        'pmClass:pm?pm.className:"",'
+        'hasNord:!!nord,'
+        'hasH1:!!h1,'
+        'h1Text:h1?h1.textContent:"",'
+        'h1FontSize:cs?cs.fontSize:"n/a",'
+        'h1FontWeight:cs?cs.fontWeight:"n/a",'
+        'bridgeType:typeof window.bridge,'
+        'hasInit:typeof window.bridge.init,'
+        'sheetCount:document.styleSheets.length'
+        '});'
+        '})()',
+      );
+      debugPrint('EditorController: DOM诊断: $result');
+    } catch (e) {
+      debugPrint('EditorController: DOM诊断失败: $e');
+    }
+  }
+
   Future<void> _renderRequestedMermaid(String source, String hash) async {
-    if (source.isEmpty || _wvc == null || !_isReady) return;
+    if (source.isEmpty || _wvc == null || !_isReady || _disposed) return;
     // NativeRenderChannel.renderMermaid is cache-first (MD5 keyed). A direct
     // cached lookup is available for callers that already know the hash.
     final svg = hash.isNotEmpty
         ? await NativeRenderChannel.getCachedMermaid(hash) ??
             await NativeRenderChannel.renderMermaid(source)
         : await NativeRenderChannel.renderMermaid(source);
-    if (svg == null || _wvc == null) return;
-    await _wvc!.runJavaScript(
-      'window.nativeFeatures && window.nativeFeatures.applyNativeMermaid('
-      '${_jsStringLiteral(source)}, ${_jsStringLiteral(svg)})',
-    );
+    if (svg == null || _wvc == null || _disposed) return;
+    try {
+      await _wvc!.runJavaScript(
+        'window.nativeFeatures && window.nativeFeatures.applyNativeMermaid('
+        '${_jsStringLiteral(source)}, ${_jsStringLiteral(svg)})',
+      );
+    } catch (e) {
+      debugPrint('EditorController: applyNativeMermaid JS error: $e');
+    }
   }
 
   Future<void> setNativeTheme(NativeEditorTheme theme) async {
     _nativeTheme = theme;
     await NativeRenderChannel.setTheme(theme);
-    if (_wvc == null) return;
-    await _wvc!.runJavaScript(
-      'window.bridge && window.bridge.setTheme && window.bridge.setTheme('
-      '${_jsObjectLiteral(theme.variables)});'
-      'window.nativeFeatures && window.nativeFeatures.setTheme('
-      '${_jsObjectLiteral(theme.variables)})',
-    );
+    if (_wvc == null || _disposed) return;
+    try {
+      await _wvc!.runJavaScript(
+        'window.bridge && window.bridge.setTheme && window.bridge.setTheme('
+        '${_jsObjectLiteral(theme.variables)});'
+        'window.nativeFeatures && window.nativeFeatures.setTheme('
+        '${_jsObjectLiteral(theme.variables)})',
+      );
+    } catch (e) {
+      debugPrint('EditorController: setTheme JS error: $e');
+    }
     if (_lastContent.isNotEmpty) _scheduleNativeRender(_lastContent);
   }
 
   Future<void> insertSymbol(String symbol) async {
-    if (_wvc == null || !_isReady) return;
-    await _wvc!.runJavaScript(
-      'window.nativeFeatures && window.nativeFeatures.insertAtSelection('
-      '${_jsStringLiteral(symbol)})',
-    );
+    if (_wvc == null || !_isReady || _disposed) return;
+    try {
+      await _wvc!.runJavaScript(
+        'window.nativeFeatures && window.nativeFeatures.insertAtSelection('
+        '${_jsStringLiteral(symbol)})',
+      );
+    } catch (e) {
+      debugPrint('EditorController: insertAtSelection JS error: $e');
+    }
   }
 
   Future<void> insertTextAtCursor(String text) => insertSymbol(text);
 
   Future<void> formatSelection(String command, [String? value]) async {
-    if (_wvc == null || !_isReady) return;
-    await _wvc!.runJavaScript(
-      'window.nativeFeatures && window.nativeFeatures.formatSelection('
-      '${_jsStringLiteral(command)}, ${_jsStringLiteral(value ?? '')})',
-    );
+    if (_wvc == null || !_isReady || _disposed) return;
+    try {
+      await _wvc!.runJavaScript(
+        'window.nativeFeatures && window.nativeFeatures.formatSelection('
+        '${_jsStringLiteral(command)}, ${_jsStringLiteral(value ?? '')})',
+      );
+    } catch (e) {
+      debugPrint('EditorController: formatSelection JS error: $e');
+    }
     _selection = null;
     notifyListeners();
   }
 
   String _jsObjectLiteral(Map<String, String> value) {
-    return jsonEncode(value).replaceAllMapped(
-      RegExp(r'[^\x00-\x7F]'),
-      (match) => '\\u${match.group(0)!.codeUnitAt(0).toRadixString(16).padLeft(4, '0')}',
-    );
+    return _asciiEscapeJson(jsonEncode(value));
+  }
+
+  /// 将 JSON 字符串中的所有非 ASCII 字符转义为 `\uXXXX`，逐 code unit 处理，
+  /// 正确代理对（emoji 等补充平面字符）。
+  String _asciiEscapeJson(String json) {
+    final buf = StringBuffer();
+    for (int i = 0; i < json.length; i++) {
+      final c = json.codeUnitAt(i);
+      if (c < 0x80) {
+        buf.writeCharCode(c);
+      } else {
+        buf.write('\\u${c.toRadixString(16).padLeft(4, '0')}');
+      }
+    }
+    return buf.toString();
   }
 
   void _scheduleNativeRender(String markdown) {
@@ -258,36 +330,46 @@ class EditorController extends ChangeNotifier {
   }
 
   Future<void> _drainNativeRender() async {
-    if (_renderInFlight) return;
+    if (_renderInFlight || _disposed) return;
     final markdown = _pendingNativeMarkdown;
     if (markdown == null) return;
     _pendingNativeMarkdown = null;
     _renderInFlight = true;
     try {
       await _renderNative(markdown);
+    } catch (e) {
+      // 原生渲染失败不应导致应用崩溃；静默记录后继续。
+      debugPrint('EditorController: native render error: $e');
     } finally {
       _renderInFlight = false;
-      if (_pendingNativeMarkdown != null) {
-        _renderDebounce?.cancel();
-        _renderDebounce = Timer(Duration.zero, _drainNativeRender);
-      }
+    }
+    if (_disposed) return;
+    if (_pendingNativeMarkdown != null) {
+      _renderDebounce?.cancel();
+      _renderDebounce = Timer(Duration.zero, _drainNativeRender);
     }
   }
 
   Future<void> _renderNative(String markdown) async {
     final theme = _nativeTheme;
-    if (theme == null || _wvc == null) return;
+    if (theme == null || _wvc == null || _disposed) return;
     final generation = ++_renderGeneration;
     final result = await NativeRenderChannel.renderMarkdown(
       markdown: markdown,
       theme: theme,
     );
-    if (result == null || generation != _renderGeneration || _wvc == null) return;
+    if (result == null || generation != _renderGeneration || _wvc == null || _disposed) return;
     final patches = result.patches.map((patch) => patch.toMap()).toList(growable: false);
-    await _wvc!.runJavaScript(
-      'window.nativeFeatures && window.nativeFeatures.applyPatches('
-      '${_jsObjectLiteralList(patches)})',
-    );
+    try {
+      await _wvc!.runJavaScript(
+        'window.nativeFeatures && window.nativeFeatures.applyPatches('
+        '${_jsObjectLiteralList(patches)})',
+      );
+    } catch (e) {
+      debugPrint('EditorController: applyPatches JS error: $e');
+      return; // WebView 可能已销毁，跳过后续 embed 渲染
+    }
+    if (_disposed || _wvc == null) return;
     await _renderNativeEmbeds(markdown, generation);
   }
 
@@ -301,7 +383,7 @@ class EditorController extends ChangeNotifier {
         .map((match) => match.group(1)!.trim())
         .toSet();
 
-    await Future.wait(<Future<void>>[
+    final futures = <Future<void>>[
       for (final source in blockLatex)
         _applyNativeEmbed(
           source: source,
@@ -318,7 +400,14 @@ class EditorController extends ChangeNotifier {
           javascriptMethod: 'applyNativeLatex',
           extraArgument: ', false',
         ),
-    ]);
+    ];
+    if (futures.isEmpty) return;
+    try {
+      await Future.wait(futures);
+    } catch (e) {
+      // 单个 embed 失败不应影响其他渲染；已由 _applyNativeEmbed 内部处理。
+      debugPrint('EditorController: embed render partial error: $e');
+    }
   }
 
   Future<void> _applyNativeEmbed({
@@ -329,18 +418,19 @@ class EditorController extends ChangeNotifier {
     required String extraArgument,
   }) async {
     final html = await render();
-    if (html == null || generation != _renderGeneration || _wvc == null) return;
-    await _wvc!.runJavaScript(
-      'window.nativeFeatures && window.nativeFeatures.$javascriptMethod('
-      '${_jsStringLiteral(source)}, ${_jsStringLiteral(html)}$extraArgument)',
-    );
+    if (html == null || generation != _renderGeneration || _wvc == null || _disposed) return;
+    try {
+      await _wvc!.runJavaScript(
+        'window.nativeFeatures && window.nativeFeatures.$javascriptMethod('
+        '${_jsStringLiteral(source)}, ${_jsStringLiteral(html)}$extraArgument)',
+      );
+    } catch (e) {
+      debugPrint('EditorController: $javascriptMethod JS error: $e');
+    }
   }
 
   String _jsObjectLiteralList(List<Map<String, Object>> value) {
-    return jsonEncode(value).replaceAllMapped(
-      RegExp(r'[^\x00-\x7F]'),
-      (match) => '\\u${match.group(0)!.codeUnitAt(0).toRadixString(16).padLeft(4, '0')}',
-    );
+    return _asciiEscapeJson(jsonEncode(value));
   }
 
   /// 加载新内容（替换编辑器内容并重置 dirty）。
@@ -351,13 +441,17 @@ class EditorController extends ChangeNotifier {
       return;
     }
     if (!_isReady) {
-      // Milkdown 尚未 init,先暂�?�?'ready' 后再 setContent
+      // Milkdown 尚未 init,先暂存；'ready' 后再 setContent
       pendingInitialContent = md;
       return;
     }
-    await _wvc!.runJavaScript(
-      'window.bridge.setContent(${_jsStringLiteral(md)})',
-    );
+    try {
+      await _wvc!.runJavaScript(
+        'window.bridge.setContent(${_jsStringLiteral(md)})',
+      );
+    } catch (e) {
+      debugPrint('EditorController: setContent JS error: $e');
+    }
     _scheduleNativeRender(md);
     _isDirty = false;
     notifyListeners();
@@ -398,6 +492,7 @@ class EditorController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _renderDebounce?.cancel();
     _pendingNativeMarkdown = null;
     _wvc = null;

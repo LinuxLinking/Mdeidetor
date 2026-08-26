@@ -4,6 +4,12 @@ import path from 'node:path';
 // 把 Milkdown 工程打包为单文件 IIFE editor.js,输出到 ../assets/web/
 // (Flutter WebView 通过 loadFlutterAsset('assets/web/index.html') 加载)
 export default defineConfig({
+  define: {
+    // 修复 "process is not defined":替换 prosemirror/micromark 中的 Node.js 环境检查
+    'process.env.NODE_ENV': JSON.stringify('production'),
+    'process.env': JSON.stringify({}),
+    'process.platform': JSON.stringify('browser'),
+  },
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/main.ts'),
